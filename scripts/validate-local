@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "${root}"
+
+printf '==> Updating BrowserOS source metadata\n'
+./scripts/update-browseros
+
+printf '==> Ensuring flake inputs are locked\n'
+nix flake lock
+
+printf '==> Validating generated source metadata\n'
+./scripts/check-source
+
+printf '==> Checking formatting\n'
+nix fmt -- --check flake.nix package.nix source.nix
+
+printf '==> Running flake checks\n'
+nix flake check --print-build-logs
+
+printf '==> Building BrowserOS\n'
+nix build .#browseros --print-build-logs
+
+test -x result/bin/browseros
+test -f result/share/applications/browseros.desktop
+
+printf '==> Package version\n'
+nix eval --raw .#browseros.version
+printf '\n'
+
+printf '==> Verifying updater is idempotent\n'
+before="$(sha256sum source.nix | cut -d' ' -f1)"
+./scripts/update-browseros >/dev/null
+after="$(sha256sum source.nix | cut -d' ' -f1)"
+test "${before}" = "${after}"
+
+if [[ "${BROWSEROS_RUN_SMOKE_TEST:-0}" == "1" ]]; then
+  printf '==> Running optional BrowserOS --version smoke test\n'
+  timeout 30s result/bin/browseros --version
+fi
+
+printf '==> Validation passed\n'

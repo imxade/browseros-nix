@@ -1,0 +1,67 @@
+name: Monthly Maintenance
+
+on:
+  schedule:
+    # Keeps nixpkgs fresh and prevents GitHub from disabling scheduled workflows
+    # in an otherwise inactive public repository after 60 days.
+    - cron: "41 5 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: browseros-updater
+  cancel-in-progress: false
+
+jobs:
+  maintain:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refresh nixpkgs lock
+        run: nix flake update nixpkgs
+
+      - name: Resolve latest BrowserOS release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/update-browseros
+
+      - name: Validate source metadata
+        run: ./scripts/check-source
+
+      - name: Check formatting
+        run: nix fmt -- --check flake.nix package.nix source.nix
+
+      - name: Flake checks
+        run: nix flake check --print-build-logs
+
+      - name: Build BrowserOS
+        run: nix build .#browseros --print-build-logs
+
+      - name: Record successful maintenance
+        shell: bash
+        run: date -u +%Y-%m-%d > .github/.last-maintenance
+
+      - name: Commit validated maintenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add flake.lock source.nix .github/.last-maintenance
+
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+
+          git commit -m "chore: monthly maintenance"
+          git push origin "HEAD:${GITHUB_REF_NAME}"

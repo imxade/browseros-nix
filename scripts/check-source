@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+source_file="${root}/source.nix"
+
+version="$(nix eval --raw --file "${source_file}" version)"
+tag="$(nix eval --raw --file "${source_file}" tag)"
+url="$(nix eval --raw --file "${source_file}" url)"
+hash="$(nix eval --raw --file "${source_file}" hash)"
+
+if [[ "${tag}" != "v${version}" ]]; then
+  printf 'error: tag/version mismatch: tag=%s version=%s\n' "${tag}" "${version}" >&2
+  exit 1
+fi
+
+expected="https://github.com/browseros-ai/BrowserOS/releases/download/${tag}/BrowserOS_${tag}_x64.AppImage"
+if [[ "${url}" != "${expected}" ]]; then
+  printf 'error: unexpected source URL\nexpected: %s\nactual:   %s\n' "${expected}" "${url}" >&2
+  exit 1
+fi
+
+if [[ "${hash}" == "sha256-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" ]]; then
+  printf '%s\n' 'error: source.nix still contains the bootstrap fake hash' >&2
+  exit 1
+fi
+
+if [[ ! "${hash}" =~ ^sha256-[A-Za-z0-9+/]{43}=$ ]]; then
+  printf 'error: malformed source hash: %s\n' "${hash}" >&2
+  exit 1
+fi
+
+printf 'source metadata is structurally valid: BrowserOS %s\n' "${version}"

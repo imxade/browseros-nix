@@ -1,0 +1,70 @@
+name: Update BrowserOS
+
+on:
+  schedule:
+    # Four times daily, deliberately off the top of the hour.
+    - cron: "17 1,7,13,19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: browseros-updater
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31.11.1
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve latest BrowserOS release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: ./scripts/update-browseros
+
+      - name: Stop when BrowserOS is already current
+        id: changes
+        shell: bash
+        run: |
+          if git diff --quiet -- source.nix; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Validate source metadata
+        if: steps.changes.outputs.changed == 'true'
+        run: ./scripts/check-source
+
+      - name: Check formatting
+        if: steps.changes.outputs.changed == 'true'
+        run: nix fmt -- --check flake.nix package.nix source.nix
+
+      - name: Flake checks
+        if: steps.changes.outputs.changed == 'true'
+        run: nix flake check --print-build-logs
+
+      - name: Build BrowserOS
+        if: steps.changes.outputs.changed == 'true'
+        run: nix build .#browseros --print-build-logs
+
+      - name: Commit validated update
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(nix eval --raw .#browseros.version)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source.nix
+          git commit -m "browseros: update to ${version}"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
