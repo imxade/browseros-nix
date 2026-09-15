@@ -17,7 +17,7 @@ let
     name = "BrowserOS-${source.version}-x64.AppImage";
   };
 
-  contents = appimageTools.extractType2 {
+  contents = appimageTools.extract {
     pname = "browseros";
     inherit (source) version;
     inherit src;
@@ -31,6 +31,7 @@ let
     exec = "browseros %U";
     icon = "browseros";
     terminal = false;
+    startupWMClass = "chromium-browser";
     categories = [
       "Network"
       "WebBrowser"

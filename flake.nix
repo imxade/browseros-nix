@@ -27,10 +27,12 @@
         browseros = {
           type = "app";
           program = "${self.packages.${system}.browseros}/bin/browseros";
+          meta.description = "BrowserOS";
         };
         default = {
           type = "app";
           program = "${self.packages.${system}.browseros}/bin/browseros";
+          meta.description = "BrowserOS";
         };
       });
 
@@ -47,37 +49,46 @@
         {
           inherit browseros;
 
-          package-layout = pkgs.runCommand "browseros-package-layout" {
-            nativeBuildInputs = [ pkgs.desktop-file-utils ];
-          } ''
-            test -x ${browseros}/bin/browseros
-            test -f ${browseros}/share/applications/browseros.desktop
-            desktop-file-validate ${browseros}/share/applications/browseros.desktop
-            touch "$out"
-          '';
+          package-layout =
+            pkgs.runCommand "browseros-package-layout"
+              {
+                nativeBuildInputs = [ pkgs.desktop-file-utils ];
+              }
+              ''
+                test -x ${browseros}/bin/browseros
+                test -f ${browseros}/share/applications/browseros.desktop
+                desktop-file-validate ${browseros}/share/applications/browseros.desktop
+                touch "$out"
+              '';
 
-          shellcheck = pkgs.runCommand "browseros-shellcheck" {
-            nativeBuildInputs = [ pkgs.shellcheck ];
-          } ''
-            shellcheck ${./scripts/update-browseros}
-            shellcheck ${./scripts/check-source}
-            shellcheck ${./scripts/validate-local}
-            touch "$out"
-          '';
+          shellcheck =
+            pkgs.runCommand "browseros-shellcheck"
+              {
+                nativeBuildInputs = [ pkgs.shellcheck ];
+              }
+              ''
+                shellcheck ${./scripts/update-browseros}
+                shellcheck ${./scripts/check-source}
+                shellcheck ${./scripts/validate-local}
+                touch "$out"
+              '';
 
-          actionlint = pkgs.runCommand "browseros-actionlint" {
-            nativeBuildInputs = [ pkgs.actionlint ];
-          } ''
-            actionlint \
-              ${./.github/workflows/ci.yml} \
-              ${./.github/workflows/update-browseros.yml} \
-              ${./.github/workflows/maintenance.yml}
-            touch "$out"
-          '';
+          actionlint =
+            pkgs.runCommand "browseros-actionlint"
+              {
+                nativeBuildInputs = [ pkgs.actionlint ];
+              }
+              ''
+                actionlint \
+                  ${./.github/workflows/ci.yml} \
+                  ${./.github/workflows/update-browseros.yml} \
+                  ${./.github/workflows/maintenance.yml}
+                touch "$out"
+              '';
         }
       );
 
-      formatter = forAllSystems (system: (pkgsFor system).nixfmt-rfc-style);
+      formatter = forAllSystems (system: (pkgsFor system).nixfmt);
 
       devShells = forAllSystems (
         system:
@@ -92,7 +103,7 @@
               desktop-file-utils
               git
               jq
-              nixfmt-rfc-style
+              nixfmt
               python3
               shellcheck
             ];

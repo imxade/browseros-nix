@@ -45,26 +45,26 @@ BROWSEROS_RUN_SMOKE_TEST=1 ./scripts/validate-local
 Run directly from a published repository:
 
 ```bash
-nix run github:<owner>/browseros-nix
+nix run github:imxade/browseros-nix
 ```
 
 Build it:
 
 ```bash
-nix build github:<owner>/browseros-nix#browseros
+nix build github:imxade/browseros-nix#browseros
 ```
 
 Install it into a profile:
 
 ```bash
-nix profile install github:<owner>/browseros-nix#browseros
+nix profile install github:imxade/browseros-nix#browseros
 ```
 
 Use as a flake input:
 
 ```nix
 {
-  inputs.browseros-nix.url = "github:<owner>/browseros-nix";
+  inputs.browseros-nix.url = "github:imxade/browseros-nix";
 
   outputs = { nixpkgs, browseros-nix, ... }: {
     nixosConfigurations.my-host = nixpkgs.lib.nixosSystem {

@@ -14,6 +14,11 @@ if [[ "${tag}" != "v${version}" ]]; then
   exit 1
 fi
 
+if [[ ! "${version}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  printf 'error: invalid version format: %s\n' "${version}" >&2
+  exit 1
+fi
+
 expected="https://github.com/browseros-ai/BrowserOS/releases/download/${tag}/BrowserOS_${tag}_x64.AppImage"
 if [[ "${url}" != "${expected}" ]]; then
   printf 'error: unexpected source URL\nexpected: %s\nactual:   %s\n' "${expected}" "${url}" >&2

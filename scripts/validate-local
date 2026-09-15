@@ -4,6 +4,12 @@ set -euo pipefail
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${root}"
 
+if ! command -v jq >/dev/null 2>&1; then
+  if command -v nix >/dev/null 2>&1; then
+    exec nix develop "${root}" -c "$0" "$@"
+  fi
+fi
+
 printf '==> Updating BrowserOS source metadata\n'
 ./scripts/update-browseros
 
@@ -24,6 +30,9 @@ nix build .#browseros --print-build-logs
 
 test -x result/bin/browseros
 test -f result/share/applications/browseros.desktop
+if command -v desktop-file-validate >/dev/null 2>&1; then
+  desktop-file-validate result/share/applications/browseros.desktop
+fi
 
 printf '==> Package version\n'
 nix eval --raw .#browseros.version
